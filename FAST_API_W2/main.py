@@ -1,4 +1,10 @@
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -26,6 +32,11 @@ class TaskCreate(BaseModel):
             raise ValueError("title must not be empty")
 
         return value.strip()
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    done: bool | None = None
 
 
 tasks = [
@@ -79,7 +90,7 @@ def find_task(task_id: int) -> dict:
             return task
 
     raise HTTPException(
-        status_code=404,
+        status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Task {task_id} not found",
     )
 
@@ -133,3 +144,50 @@ def create_task(new_task: TaskCreate):
 
     tasks.append(task)
     return task
+
+
+@app.put(
+    "/tasks/{task_id}",
+    response_model=Task,
+)
+def update_task(task_id: int, changes: TaskUpdate):
+    task = find_task(task_id)
+
+    if not changes.model_fields_set:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request body cannot be empty",
+        )
+
+    if "title" in changes.model_fields_set:
+        if changes.title is None or not changes.title.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="title must not be empty",
+            )
+
+        task["title"] = changes.title.strip()
+
+    if "done" in changes.model_fields_set:
+        if changes.done is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="done must be true or false",
+            )
+
+        task["done"] = changes.done
+
+    return task
+
+
+@app.delete(
+    "/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_task(task_id: int):
+    task = find_task(task_id)
+    tasks.remove(task)
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+    )

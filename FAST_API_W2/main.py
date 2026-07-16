@@ -13,6 +13,10 @@ from pydantic import BaseModel, field_validator
 app = FastAPI(
     title="Task API",
     version="1.0",
+    description=(
+        "A beginner CRUD API for managing "
+        "an in-memory to-do list."
+    ),
 )
 
 
@@ -95,7 +99,10 @@ def find_task(task_id: int) -> dict:
     )
 
 
-@app.get("/")
+@app.get(
+    "/",
+    summary="Describe the API",
+)
 def read_root():
     return {
         "name": "Task API",
@@ -104,7 +111,10 @@ def read_root():
     }
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    summary="Check whether the server is alive",
+)
 def health_check():
     return {"status": "ok"}
 
@@ -112,6 +122,7 @@ def health_check():
 @app.get(
     "/tasks",
     response_model=list[Task],
+    summary="List all tasks",
 )
 def list_tasks():
     return tasks
@@ -120,6 +131,7 @@ def list_tasks():
 @app.get(
     "/tasks/{task_id}",
     response_model=Task,
+    summary="Get one task",
 )
 def get_task(task_id: int):
     return find_task(task_id)
@@ -129,6 +141,7 @@ def get_task(task_id: int):
     "/tasks",
     response_model=Task,
     status_code=status.HTTP_201_CREATED,
+    summary="Create a new task",
 )
 def create_task(new_task: TaskCreate):
     next_id = max(
@@ -149,6 +162,7 @@ def create_task(new_task: TaskCreate):
 @app.put(
     "/tasks/{task_id}",
     response_model=Task,
+    summary="Update an existing task",
 )
 def update_task(task_id: int, changes: TaskUpdate):
     task = find_task(task_id)
@@ -183,6 +197,7 @@ def update_task(task_id: int, changes: TaskUpdate):
 @app.delete(
     "/tasks/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an existing task",
 )
 def delete_task(task_id: int):
     task = find_task(task_id)

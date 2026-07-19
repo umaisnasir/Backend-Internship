@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import (
@@ -10,9 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .models import Task, TaskCreate, TaskUpdate
-from .repositories.in_memory import (
-    InMemoryTaskRepository,
-)
+from .repositories.postgres import PostgresTaskRepository
 from .service import (
     InvalidTaskError,
     TaskNotFoundError,
@@ -20,7 +19,9 @@ from .service import (
 )
 
 
-repository = InMemoryTaskRepository()
+database_url = os.environ["DATABASE_URL"]
+
+repository = PostgresTaskRepository(database_url)
 service = TaskService(repository)
 
 
@@ -38,15 +39,15 @@ app = FastAPI(
     title="Task API",
     version="1.0",
     description=(
-        "A CRUD API using service and "
-        "repository layers."
+        "A CRUD API using PostgreSQL, "
+        "service, and repository layers."
     ),
     lifespan=lifespan,
 )
 
 
 @app.exception_handler(TaskNotFoundError)
-async def not_found_handler(
+async def task_not_found_handler(
     request: Request,
     exc: TaskNotFoundError,
 ):
@@ -92,6 +93,7 @@ def read_root():
     return {
         "name": "Task API",
         "version": "1.0",
+        "storage": "PostgreSQL",
         "endpoints": ["/tasks"],
     }
 
@@ -156,5 +158,5 @@ def delete_task(task_id: int):
     service.delete_task(task_id)
 
     return Response(
-        status_code=status.HTTP_204_NO_CONTENT
+        status_code=status.HTTP_204_NO_CONTENT,
     )

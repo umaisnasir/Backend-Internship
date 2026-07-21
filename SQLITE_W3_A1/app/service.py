@@ -4,7 +4,7 @@ from .repositories.base import TaskData, TaskRepository
 
 class TaskNotFoundError(Exception):
     """
-    Raised when the requested task does not exist.
+    Raised when a requested task does not exist.
     """
 
     pass
@@ -12,7 +12,7 @@ class TaskNotFoundError(Exception):
 
 class InvalidTaskError(Exception):
     """
-    Raised when the task request contains invalid data.
+    Raised when a task request contains invalid data.
     """
 
     pass
@@ -22,9 +22,8 @@ class TaskService:
     """
     Contains the business logic for task operations.
 
-    The service does not know whether tasks are stored in
-    SQLite, PostgreSQL, or memory. It communicates with
-    storage through the TaskRepository interface.
+    The service communicates with the database through
+    the TaskRepository interface.
     """
 
     def __init__(
@@ -35,7 +34,7 @@ class TaskService:
 
     def list_tasks(self) -> list[TaskData]:
         """
-        Return all tasks from the repository.
+        Return all tasks.
         """
         return self._repository.list_all()
 
@@ -44,9 +43,9 @@ class TaskService:
         task_id: int,
     ) -> TaskData:
         """
-        Return one task by its ID.
+        Return one task by ID.
 
-        Raise TaskNotFoundError if the task does not exist.
+        Raise TaskNotFoundError when the task does not exist.
         """
         task = self._repository.get_by_id(task_id)
 
@@ -74,10 +73,8 @@ class TaskService:
         """
         Update an existing task.
 
-        Raise InvalidTaskError if the request body is empty
-        or contains invalid values.
-
-        Raise TaskNotFoundError if the task does not exist.
+        Raise InvalidTaskError when the request data is invalid.
+        Raise TaskNotFoundError when the task does not exist.
         """
         if not changes.model_fields_set:
             raise InvalidTaskError(
@@ -124,9 +121,9 @@ class TaskService:
         task_id: int,
     ) -> None:
         """
-        Delete a task.
+        Delete an existing task.
 
-        Raise TaskNotFoundError if the task does not exist.
+        Raise TaskNotFoundError when the task does not exist.
         """
         deleted = self._repository.delete(task_id)
 

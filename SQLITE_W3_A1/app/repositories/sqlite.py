@@ -8,18 +8,12 @@ from .base import TaskData, TaskRepository
 class SQLiteTaskRepository(TaskRepository):
     """
     SQLite implementation of the TaskRepository interface.
-
-    This class is responsible for storing and retrieving tasks
-    from the tasks.db SQLite database.
     """
 
     def __init__(
         self,
         database_path: str | Path,
     ) -> None:
-        """
-        Store the path of the SQLite database file.
-        """
         self._database_path = str(database_path)
 
     def _connect(self) -> sqlite3.Connection:
@@ -30,7 +24,7 @@ class SQLiteTaskRepository(TaskRepository):
             self._database_path
         )
 
-        # Allows column values to be accessed by name:
+        # Allows access using column names:
         # row["id"], row["title"], row["done"]
         connection.row_factory = sqlite3.Row
 
@@ -84,18 +78,9 @@ class SQLiteTaskRepository(TaskRepository):
                     VALUES (?, ?)
                     """,
                     [
-                        (
-                            "Learn FastAPI",
-                            1,
-                        ),
-                        (
-                            "Build a CRUD API",
-                            0,
-                        ),
-                        (
-                            "Publish it to GitHub",
-                            0,
-                        ),
+                        ("Learn FastAPI", 1),
+                        ("Build a CRUD API", 0),
+                        ("Publish it to GitHub", 0),
                     ],
                 )
 
@@ -103,15 +88,15 @@ class SQLiteTaskRepository(TaskRepository):
 
     def close(self) -> None:
         """
-        No permanent database connection is kept open.
+        No permanent connection is stored.
 
-        Each method opens and closes its own connection.
+        Every method opens and closes its own connection.
         """
         pass
 
     def list_all(self) -> list[TaskData]:
         """
-        Retrieve and return every task from the database.
+        Return all tasks from the database.
         """
         with closing(self._connect()) as connection:
             rows = connection.execute(
@@ -132,7 +117,7 @@ class SQLiteTaskRepository(TaskRepository):
         task_id: int,
     ) -> TaskData | None:
         """
-        Retrieve one task using its ID.
+        Return one task by its ID.
 
         Return None when the task does not exist.
         """
@@ -156,11 +141,41 @@ class SQLiteTaskRepository(TaskRepository):
         title: str,
     ) -> TaskData:
         """
-        This method will be implemented in Stage 2.
+        Insert a new task into the database and return it.
         """
-        raise NotImplementedError(
-            "Task creation will be implemented in Stage 2"
-        )
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO tasks (title, done)
+                VALUES (?, 0)
+                """,
+                (title,),
+            )
+
+            task_id = cursor.lastrowid
+
+            if task_id is None:
+                raise RuntimeError(
+                    "SQLite did not generate a task ID"
+                )
+
+            row = connection.execute(
+                """
+                SELECT id, title, done
+                FROM tasks
+                WHERE id = ?
+                """,
+                (task_id,),
+            ).fetchone()
+
+            connection.commit()
+
+        if row is None:
+            raise RuntimeError(
+                "SQLite did not return the created task"
+            )
+
+        return self._row_to_task(row)
 
     def update(
         self,

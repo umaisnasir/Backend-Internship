@@ -3,31 +3,67 @@ from .repositories.base import TaskData, TaskRepository
 
 
 class TaskNotFoundError(Exception):
+    """
+    Raised when the requested task does not exist.
+    """
+
     pass
 
 
 class InvalidTaskError(Exception):
+    """
+    Raised when the task request contains invalid data.
+    """
+
     pass
 
 
 class TaskService:
-    def __init__(self, repository: TaskRepository) -> None:
+    """
+    Contains the business logic for task operations.
+
+    The service does not know whether tasks are stored in
+    SQLite, PostgreSQL, or memory. It communicates with
+    storage through the TaskRepository interface.
+    """
+
+    def __init__(
+        self,
+        repository: TaskRepository,
+    ) -> None:
         self._repository = repository
 
     def list_tasks(self) -> list[TaskData]:
+        """
+        Return all tasks from the repository.
+        """
         return self._repository.list_all()
 
-    def get_task(self, task_id: int) -> TaskData:
+    def get_task(
+        self,
+        task_id: int,
+    ) -> TaskData:
+        """
+        Return one task by its ID.
+
+        Raise TaskNotFoundError if the task does not exist.
+        """
         task = self._repository.get_by_id(task_id)
 
         if task is None:
             raise TaskNotFoundError(
-                f"Task {task_id} not found"
+                "Task not found"
             )
 
         return task
 
-    def create_task(self, title: str) -> TaskData:
+    def create_task(
+        self,
+        title: str,
+    ) -> TaskData:
+        """
+        Create and return a new task.
+        """
         return self._repository.create(title)
 
     def update_task(
@@ -35,6 +71,14 @@ class TaskService:
         task_id: int,
         changes: TaskUpdate,
     ) -> TaskData:
+        """
+        Update an existing task.
+
+        Raise InvalidTaskError if the request body is empty
+        or contains invalid values.
+
+        Raise TaskNotFoundError if the task does not exist.
+        """
         if not changes.model_fields_set:
             raise InvalidTaskError(
                 "Request body cannot be empty"
@@ -70,15 +114,23 @@ class TaskService:
 
         if task is None:
             raise TaskNotFoundError(
-                f"Task {task_id} not found"
+                "Task not found"
             )
 
         return task
 
-    def delete_task(self, task_id: int) -> None:
+    def delete_task(
+        self,
+        task_id: int,
+    ) -> None:
+        """
+        Delete a task.
+
+        Raise TaskNotFoundError if the task does not exist.
+        """
         deleted = self._repository.delete(task_id)
 
         if not deleted:
             raise TaskNotFoundError(
-                f"Task {task_id} not found"
+                "Task not found"
             )

@@ -1,0 +1,3 @@
+"""
+Supabase authentication FastAPI application.
+"""

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 from supabase_auth.errors import AuthError
 
+from ..config import get_settings
 from ..exceptions import ApiError
 from ..models import (
     AuthCredentials,
@@ -177,9 +179,7 @@ class AuthService:
             code = _error_code(exc)
             status_code = _error_status(exc)
 
-            if code in {
-                "over_request_rate_limit",
-            } or status_code == 429:
+            if code == "over_request_rate_limit" or status_code == 429:
                 raise ApiError(
                     429,
                     "Too many authentication requests. Try again later",
@@ -205,6 +205,58 @@ class AuthService:
             )
 
         return response.user
+
+    def logout(self, access_token: str) -> None:
+        """
+        Revoke the current Supabase Auth session.
+
+        The API receives only an access token. Therefore, it calls the
+        official Supabase Auth logout endpoint directly instead of
+        reconstructing an SDK session that would require a refresh token.
+        """
+
+        settings = get_settings()
+        logout_url = (
+            f"{settings.supabase_url.rstrip('/')}/auth/v1/logout"
+        )
+
+        try:
+            response = httpx.post(
+                logout_url,
+                params={"scope": "local"},
+                headers={
+                    "apikey": settings.supabase_key,
+                    "Authorization": f"Bearer {access_token}",
+                },
+                timeout=10.0,
+                follow_redirects=True,
+            )
+        except httpx.RequestError as exc:
+            raise ApiError(
+                503,
+                "Authentication provider is unavailable",
+            ) from exc
+
+        if response.status_code in {200, 204}:
+            return
+
+        if response.status_code == 429:
+            raise ApiError(
+                429,
+                "Too many authentication requests. Try again later",
+            )
+
+        if response.status_code in {400, 401, 403}:
+            raise ApiError(
+                401,
+                "Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        raise ApiError(
+            502,
+            "Unable to revoke the Supabase session",
+        )
 
 
 auth_service = AuthService()

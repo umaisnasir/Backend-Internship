@@ -1,5 +1,8 @@
-from fastapi import APIRouter, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, Response, status
+
+from ..dependencies.auth import AuthContext, get_auth_context
 from ..models import AuthCredentials, SignupResponse, TokenResponse
 from ..services.auth import auth_service
 
@@ -28,3 +31,19 @@ def signup(credentials: AuthCredentials) -> SignupResponse:
 )
 def login(credentials: AuthCredentials) -> TokenResponse:
     return auth_service.login(credentials)
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="Revoke the current Supabase Auth session",
+)
+def logout(
+    context: Annotated[
+        AuthContext,
+        Depends(get_auth_context),
+    ],
+) -> Response:
+    auth_service.logout(context.access_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

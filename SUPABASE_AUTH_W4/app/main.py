@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from .config import get_settings
 from .exceptions import ApiError
 from .routers.auth import router as auth_router
+from .routers.protected import router as protected_router
+from .routers.public import router as public_router
 
 
 get_settings()
@@ -12,7 +14,7 @@ get_settings()
 
 app = FastAPI(
     title="Supabase Authentication API",
-    version="0.2.0",
+    version="0.3.0",
     description=(
         "A FastAPI project using Supabase Auth for "
         "signup, login, logout, and protected routes."
@@ -63,6 +65,8 @@ async def request_validation_error_handler(
 
 
 app.include_router(auth_router)
+app.include_router(public_router)
+app.include_router(protected_router)
 
 
 @app.get(
@@ -72,8 +76,8 @@ app.include_router(auth_router)
 def read_root() -> dict[str, str]:
     return {
         "name": "Supabase Authentication API",
-        "version": "0.2.0",
-        "stage": "Stage 1",
+        "version": "0.3.0",
+        "stage": "Stage 2",
         "docs": "/docs",
     }
 

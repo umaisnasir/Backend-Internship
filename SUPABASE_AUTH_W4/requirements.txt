@@ -1,0 +1,5 @@
+fastapi[standard]
+python-dotenv
+supabase>=2.30,<3.0
+email-validator>=2.0,<3.0
+httpx>=0.27,<0.29

@@ -28,10 +28,6 @@ def _error_status(exc: AuthError) -> int:
 
 
 def serialize_user(user: Any) -> PublicUser:
-    """
-    Convert the Supabase user object into the API's safe public model.
-    """
-
     created_at = getattr(user, "created_at", None)
 
     if created_at is None:
@@ -49,10 +45,6 @@ def serialize_user(user: Any) -> PublicUser:
 
 
 class AuthService:
-    """
-    Application service responsible for Supabase authentication calls.
-    """
-
     def signup(self, credentials: AuthCredentials) -> SignupResponse:
         client = create_supabase_client()
 
@@ -68,15 +60,12 @@ class AuthService:
             status_code = _error_status(exc)
 
             if code in {"user_already_exists", "email_exists"}:
-                raise ApiError(
-                    status_code=409,
-                    message="User already registered",
-                ) from exc
+                raise ApiError(409, "User already registered") from exc
 
             if code == "weak_password":
                 raise ApiError(
-                    status_code=400,
-                    message="Password does not meet the required security policy",
+                    400,
+                    "Password does not meet the required security policy",
                 ) from exc
 
             if code in {
@@ -84,8 +73,8 @@ class AuthService:
                 "validation_failed",
             }:
                 raise ApiError(
-                    status_code=400,
-                    message="Invalid email or password",
+                    400,
+                    "Invalid email or password",
                 ) from exc
 
             if code in {
@@ -93,25 +82,25 @@ class AuthService:
                 "over_email_send_rate_limit",
             } or status_code == 429:
                 raise ApiError(
-                    status_code=429,
-                    message="Too many authentication requests. Try again later",
+                    429,
+                    "Too many authentication requests. Try again later",
                 ) from exc
 
             if status_code >= 500:
                 raise ApiError(
-                    status_code=502,
-                    message="Authentication provider is unavailable",
+                    502,
+                    "Authentication provider is unavailable",
                 ) from exc
 
             raise ApiError(
-                status_code=400,
-                message="Unable to create account",
+                400,
+                "Unable to create account",
             ) from exc
 
         if response.user is None:
             raise ApiError(
-                status_code=502,
-                message="Supabase did not return the created user",
+                502,
+                "Supabase did not return the created user",
             )
 
         return SignupResponse(
@@ -138,27 +127,26 @@ class AuthService:
                 "over_email_send_rate_limit",
             } or status_code == 429:
                 raise ApiError(
-                    status_code=429,
-                    message="Too many authentication requests. Try again later",
+                    429,
+                    "Too many authentication requests. Try again later",
                 ) from exc
 
             if code == "email_not_confirmed":
                 raise ApiError(
-                    status_code=401,
-                    message="Email address is not confirmed",
+                    401,
+                    "Email address is not confirmed",
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from exc
 
             if status_code >= 500:
                 raise ApiError(
-                    status_code=502,
-                    message="Authentication provider is unavailable",
+                    502,
+                    "Authentication provider is unavailable",
                 ) from exc
 
-            # Do not reveal whether the account exists.
             raise ApiError(
-                status_code=401,
-                message="Invalid login credentials",
+                401,
+                "Invalid login credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             ) from exc
 
@@ -170,8 +158,8 @@ class AuthService:
             or not session.refresh_token
         ):
             raise ApiError(
-                status_code=502,
-                message="Supabase did not return a complete session",
+                502,
+                "Supabase did not return a complete session",
             )
 
         return TokenResponse(
@@ -179,6 +167,44 @@ class AuthService:
             refresh_token=session.refresh_token,
             token_type="bearer",
         )
+
+    def verify_access_token(self, access_token: str) -> Any:
+        client = create_supabase_client()
+
+        try:
+            response = client.auth.get_user(access_token)
+        except AuthError as exc:
+            code = _error_code(exc)
+            status_code = _error_status(exc)
+
+            if code in {
+                "over_request_rate_limit",
+            } or status_code == 429:
+                raise ApiError(
+                    429,
+                    "Too many authentication requests. Try again later",
+                ) from exc
+
+            if status_code >= 500:
+                raise ApiError(
+                    503,
+                    "Authentication verification is unavailable",
+                ) from exc
+
+            raise ApiError(
+                401,
+                "Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from exc
+
+        if response.user is None:
+            raise ApiError(
+                401,
+                "Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return response.user
 
 
 auth_service = AuthService()

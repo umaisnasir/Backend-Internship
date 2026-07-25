@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, status
 
 from ..exceptions import ApiError
+from ..models import PublicUser
+from ..services.auth import auth_service, serialize_user
 
 
 router = APIRouter(
@@ -11,16 +13,12 @@ router = APIRouter(
 )
 
 
-def require_unverified_bearer_token(
+def extract_bearer_token(
     authorization: Annotated[
         str | None,
         Header(alias="Authorization"),
     ] = None,
 ) -> str:
-    """
-    Stage 2 only: checks header format but does not verify the JWT.
-    """
-
     if authorization is None:
         raise ApiError(
             status_code=401,
@@ -45,17 +43,34 @@ def require_unverified_bearer_token(
 
 
 @router.get(
+    "/profile",
+    response_model=PublicUser,
+    status_code=status.HTTP_200_OK,
+    summary="Return the verified user's profile",
+)
+def profile(
+    access_token: Annotated[
+        str,
+        Depends(extract_bearer_token),
+    ],
+) -> PublicUser:
+    user = auth_service.verify_access_token(access_token)
+    return serialize_user(user)
+
+
+@router.get(
     "/dashboard",
     status_code=status.HTTP_200_OK,
-    summary="Temporary Stage 2 dashboard",
+    summary="Temporary Stage 3 dashboard",
 )
 def dashboard(
-    token: Annotated[
+    access_token: Annotated[
         str,
-        Depends(require_unverified_bearer_token),
+        Depends(extract_bearer_token),
     ],
 ) -> dict[str, str]:
+    # Still intentionally unverified until Stage 4.
     return {
         "message": "Temporary dashboard access granted",
-        "warning": "Token format checked, but token not verified",
+        "warning": "Dashboard token is not verified until Stage 4",
     }

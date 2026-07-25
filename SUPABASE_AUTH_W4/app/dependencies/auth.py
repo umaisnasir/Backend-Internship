@@ -3,41 +3,43 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated, Any
 
-from fastapi import Depends, Header
+from fastapi import Depends, Security
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 
 from ..exceptions import ApiError
 from ..services.auth import auth_service
 
 
+bearer_scheme = HTTPBearer(
+    bearerFormat="JWT",
+    scheme_name="SupabaseBearer",
+    description=(
+        "Paste only the Supabase access token. "
+        "Swagger adds the Bearer prefix automatically."
+    ),
+    auto_error=False,
+)
+
+
 @dataclass(frozen=True)
 class AuthContext:
-    """
-    Verified authentication information for one request.
-    """
-
     access_token: str
     user: Any
 
 
 def extract_access_token(
-    authorization: Annotated[
-        str | None,
-        Header(alias="Authorization"),
-    ] = None,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Security(bearer_scheme),
+    ],
 ) -> str:
-    if authorization is None:
-        raise ApiError(
-            status_code=401,
-            message="Access token required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    scheme, separator, token = authorization.partition(" ")
-
     if (
-        not separator
-        or scheme.lower() != "bearer"
-        or not token.strip()
+        credentials is None
+        or credentials.scheme.lower() != "bearer"
+        or not credentials.credentials.strip()
     ):
         raise ApiError(
             status_code=401,
@@ -45,7 +47,7 @@ def extract_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return token.strip()
+    return credentials.credentials.strip()
 
 
 def get_auth_context(

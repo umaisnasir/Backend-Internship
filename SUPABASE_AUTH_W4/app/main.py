@@ -12,13 +12,31 @@ from .routers.public import router as public_router
 get_settings()
 
 
+tags_metadata = [
+    {
+        "name": "Authentication",
+        "description": "Create users, log in, and revoke sessions.",
+    },
+    {
+        "name": "Public",
+        "description": "Routes that do not require authentication.",
+    },
+    {
+        "name": "Protected",
+        "description": "Routes requiring a verified Supabase access token.",
+    },
+]
+
+
 app = FastAPI(
     title="Supabase Authentication API",
-    version="0.3.0",
+    version="1.0.0",
     description=(
-        "A FastAPI project using Supabase Auth for "
-        "signup, login, logout, and protected routes."
+        "Secure FastAPI authentication using Supabase Auth, "
+        "JWT access tokens, reusable dependencies, and "
+        "Swagger HTTP Bearer authorization."
     ),
+    openapi_tags=tags_metadata,
 )
 
 
@@ -76,8 +94,8 @@ app.include_router(protected_router)
 def read_root() -> dict[str, str]:
     return {
         "name": "Supabase Authentication API",
-        "version": "0.3.0",
-        "stage": "Stage 2",
+        "version": "1.0.0",
+        "stage": "Stage 5",
         "docs": "/docs",
     }
 

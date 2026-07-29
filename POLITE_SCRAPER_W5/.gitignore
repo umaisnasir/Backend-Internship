@@ -9,4 +9,6 @@ __pycache__/
 logs/*.log
 .vscode/
 .idea/
-.DS_Store
+
+data/processed/*.csv
+data/processed/*.jsonl

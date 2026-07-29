@@ -22,8 +22,15 @@ class Settings(BaseSettings):
         "(educational project; contact: your-email@example.com)"
     )
 
-    min_delay_seconds: float = Field(default=1.5, ge=1.0)
-    timeout_seconds: float = Field(default=15.0, gt=0)
+    min_delay_seconds: float = Field(
+        default=1.5,
+        ge=1.0,
+    )
+
+    timeout_seconds: float = Field(
+        default=15.0,
+        gt=0,
+    )
 
     max_retries: int = Field(
         default=3,
@@ -77,11 +84,29 @@ class Settings(BaseSettings):
         cls,
         value: str,
     ) -> str:
+        """
+        Ensure the scraper identifies itself properly.
+
+        Blocks obvious template placeholders but allows
+        valid test emails such as test@example.com.
+        """
+
         lowered = value.lower()
 
+        blocked_placeholders = [
+            "your-email@example.com",
+            "your-real-email@example.com",
+            "replace-with-your-email",
+            "yourname",
+        ]
+
+        contains_placeholder = any(
+            placeholder in lowered
+            for placeholder in blocked_placeholders
+        )
+
         if (
-            "example.com" in lowered
-            or "yourname" in lowered
+            contains_placeholder
             or "contact:" not in lowered
         ):
             raise ValueError(

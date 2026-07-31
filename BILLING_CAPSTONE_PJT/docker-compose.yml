@@ -1,0 +1,45 @@
+name: usage-billing-capstone
+
+services:
+  db:
+    image: postgres:17-alpine
+
+    environment:
+      POSTGRES_DB: billing_db
+      POSTGRES_USER: billing_user
+      POSTGRES_PASSWORD: billing_password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - billing_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U billing_user -d billing_db"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - .:/app
+
+volumes:
+  billing_postgres_data:
